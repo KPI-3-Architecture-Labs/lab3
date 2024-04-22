@@ -24,8 +24,9 @@ type Visualizer struct {
 	tx   chan screen.Texture
 	done chan struct{}
 
-	sz  size.Event
-	pos image.Rectangle
+	sz       size.Event
+	pos      image.Rectangle
+	mousePos image.Point
 }
 
 func (pw *Visualizer) Main() {
@@ -115,8 +116,9 @@ func (pw *Visualizer) handleEvent(e any, t screen.Texture) {
 		log.Printf("ERROR: %s", e)
 
 	case mouse.Event:
-		if t == nil {
-			// TODO: Реалізувати реакцію на натискання кнопки миші.
+		if e.Button == mouse.ButtonLeft && e.Direction == mouse.DirPress {
+			pw.mousePos = image.Point{X: int(e.X), Y: int(e.Y)}
+			pw.w.Send(paint.Event{})
 		}
 
 	case paint.Event:
@@ -134,7 +136,12 @@ func (pw *Visualizer) handleEvent(e any, t screen.Texture) {
 func (pw *Visualizer) drawDefaultUI() {
 	pw.w.Fill(pw.sz.Bounds(), color.RGBA{0, 255, 0, 255}, draw.Src)
 
-	centerX, centerY := 400, 400
+	var centerX, centerY int
+	if pw.mousePos == (image.Point{}) {
+		centerX, centerY = 400, 400
+	} else {
+		centerX, centerY = pw.mousePos.X, pw.mousePos.Y
+	}
 
 	tWidth := 500
 	barWidth := tWidth / 4
