@@ -6,7 +6,6 @@ import (
 	"log"
 
 	"golang.org/x/exp/shiny/driver"
-	"golang.org/x/exp/shiny/imageutil"
 	"golang.org/x/exp/shiny/screen"
 	"golang.org/x/image/draw"
 	"golang.org/x/mobile/event/key"
@@ -25,8 +24,9 @@ type Visualizer struct {
 	tx   chan screen.Texture
 	done chan struct{}
 
-	sz  size.Event
-	pos image.Rectangle
+	sz       size.Event
+	pos      image.Rectangle
+	mousePos image.Point
 }
 
 func (pw *Visualizer) Main() {
@@ -43,7 +43,9 @@ func (pw *Visualizer) Update(t screen.Texture) {
 
 func (pw *Visualizer) run(s screen.Screen) {
 	w, err := s.NewWindow(&screen.NewWindowOptions{
-		Title: pw.Title,
+		Title:  pw.Title,
+		Width:  800,
+		Height: 800,
 	})
 	if err != nil {
 		log.Fatal("Failed to initialize the app window:", err)
@@ -114,8 +116,9 @@ func (pw *Visualizer) handleEvent(e any, t screen.Texture) {
 		log.Printf("ERROR: %s", e)
 
 	case mouse.Event:
-		if t == nil {
-			// TODO: Реалізувати реакцію на натискання кнопки миші.
+		if e.Button == mouse.ButtonLeft && e.Direction == mouse.DirPress {
+			pw.mousePos = image.Point{X: int(e.X), Y: int(e.Y)}
+			pw.w.Send(paint.Event{})
 		}
 
 	case paint.Event:
@@ -131,12 +134,23 @@ func (pw *Visualizer) handleEvent(e any, t screen.Texture) {
 }
 
 func (pw *Visualizer) drawDefaultUI() {
-	pw.w.Fill(pw.sz.Bounds(), color.Black, draw.Src) // Фон.
+	pw.w.Fill(pw.sz.Bounds(), color.RGBA{0, 255, 0, 255}, draw.Src)
 
-	// TODO: Змінити колір фону та додати відображення фігури у вашому варіанті.
-
-	// Малювання білої рамки.
-	for _, br := range imageutil.Border(pw.sz.Bounds(), 10) {
-		pw.w.Fill(br, color.White, draw.Src)
+	var centerX, centerY int
+	if pw.mousePos == (image.Point{}) {
+		centerX, centerY = 400, 400
+	} else {
+		centerX, centerY = pw.mousePos.X, pw.mousePos.Y
 	}
+
+	tWidth := 500
+	barWidth := tWidth / 4
+	verticalBar := image.Rect(centerX-barWidth/2, centerY, centerX+barWidth/2, centerY+200)
+
+	horizontalBarWidth := 400
+	horizontalBarHeight := 300
+	horizontalBar := image.Rect(centerX-horizontalBarWidth/2, centerY-horizontalBarHeight/2, centerX+horizontalBarWidth/2, centerY)
+
+	pw.w.Fill(verticalBar, color.RGBA{R: 255, A: 255}, draw.Src)
+	pw.w.Fill(horizontalBar, color.RGBA{R: 255, A: 255}, draw.Src)
 }
